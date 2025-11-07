@@ -7,6 +7,18 @@ on:
 
 jobs:
   test:
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: postgres
+          TZ: Asia/Tokyo
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
     runs-on: ubuntu-latest
     env:
       TZ: Asia/Tokyo
@@ -42,6 +54,9 @@ jobs:
 
       - name: Lint
         run: make lint
+
+      - name: Run postgres init script
+        run: PGPASSWORD=password psql -h localhost -p 5432 -U postgres -d postgres -f ./postgres/init.sql
 
       - name: Test
         run: make test
