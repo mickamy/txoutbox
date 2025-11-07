@@ -39,73 +39,22 @@ asynchronously with a relay that handles retries, leasing, and backoff.
    );
    ```
 
-3. **See the runnable example (`example/main.go`)**
-   ```go
-   package main
-
-   import (
-     "context"
-     "database/sql"
-     "log"
-     "time"
-
-     _ "github.com/jackc/pgx/v5/stdlib"
-     
-     "github.com/mickamy/txoutbox"
-     "github.com/mickamy/txoutbox/store/postgres"
-   )
-
-   type mockSender struct{}
-
-   func (mockSender) Send(_ context.Context, msg txoutbox.Envelope) error {
-     log.Printf("send topic=%s id=%d payload=%s", msg.Topic, msg.ID, msg.Payload)
-     return nil
-   }
-
-   func main() {
-     ctx := context.Background()
-     db, err := sql.Open("pgx", "postgres://postgres:password@localhost:5432/txoutbox?sslmode=disable")
-     if err != nil {
-       log.Fatal(err)
-     }
-     defer func() {
-       _ = db.Close()
-     }()
-
-     store := postgres.NewStore(db)
-     if err := enqueue(ctx, store, db); err != nil {
-       log.Fatal(err)
-     }
-
-     relay := txoutbox.NewRelay(store, mockSender{}, txoutbox.Options{
-       BatchSize:   10,
-       LeaseTTL:    30 * time.Second,
-       MaxAttempts: 3,
-     })
-     if err := relay.Run(ctx); err != nil {
-       log.Fatal(err)
-     }
-   }
-
-   func enqueue(ctx context.Context, store txoutbox.Store, db *sql.DB) error {
-     tx, err := db.BeginTx(ctx, nil)
-     if err != nil {
-       return err
-     }
-     defer func() {
-       _ = tx.Rollback()
-     }()
-     if err := store.Add(ctx, tx, txoutbox.Message{
-       Topic: "example.event",
-       Key:   "demo",
-       Body: map[string]any{
-         "message": "hello, txoutbox!",
-         "ts":      time.Now().UTC(),
-       },
-     }); err != nil {
-       return err
-     }
-     return tx.Commit()
-   }
+3. **Run the richer example (`example/` module)**  
+   After `docker compose up`, use the commands below in separate terminals:
+   ```bash
+   cd example
+   go run ./cmd/webhook                   # receives POSTs on :8081/events and logs them
+   go run ./cmd/enqueue                   # seeds an order row and queues an outbox message
+   go run ./cmd/relay                     # leases messages and POSTs them to the webhook
+   SENDER=sqs \
+     QUEUE_URL=http://localhost:4566/000000000000/worker-queue \
+     go run ./cmd/relay                   # alternative: send to LocalStack SQS
    ```
-   Run `cd example && go run .` (after `docker compose up`) to see a complete transaction + relay loop.
+    - `POSTGRES_DSN` (default `postgres://postgres:password@localhost:5432/txoutbox?sslmode=disable`) controls database
+      access.
+    - `SENDER` chooses the dispatcher (`webhook` default, `sqs` for LocalStack). Use `WEBHOOK_URL` or `SQS_ENDPOINT`/
+      `QUEUE_URL` to point at your infra.
+    - `cmd/enqueue` creates an `orders` table (if needed), writes a fake order, and calls `store/postgres.Add` inside a
+      transaction.
+    - `cmd/relay` runs the shared relay with either the HTTP sender or the SQS sender so you can observe leasing/retries
+      interacting with downstream processes (`cmd/webhook` or LocalStack SQS).
