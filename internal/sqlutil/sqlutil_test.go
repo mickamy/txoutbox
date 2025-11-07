@@ -9,15 +9,11 @@ import (
 
 func TestQuoteIdentifier(t *testing.T) {
 	t.Parallel()
-	if got := sqlutil.QuoteIdentifier(`foo"bar`); got != `"foo""bar"` {
+	if got := sqlutil.QuoteIdentifier(`foo"bar`, `"`); got != `"foo""bar"` {
 		t.Fatalf("QuoteIdentifier(%q) = %s, want %s", `foo"bar`, got, `"foo""bar"`)
 	}
-}
-
-func TestEscapeIdentifier(t *testing.T) {
-	t.Parallel()
-	if got := sqlutil.EscapeIdentifier(`f"o`); got != `f""o` {
-		t.Fatalf("EscapeIdentifier(%q) = %s, want %s", `f"o`, got, `f""o`)
+	if got := sqlutil.QuoteIdentifier("foo`bar", "`"); got != "`foo``bar`" {
+		t.Fatalf("QuoteIdentifier mysql = %s, want `foo``bar`", got)
 	}
 }
 

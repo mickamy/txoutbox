@@ -18,6 +18,17 @@ jobs:
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: txoutbox
+          TZ: Asia/Tokyo
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -ppassword"
+          --health-interval 10s --health-timeout 5s --health-retries 10
 
     runs-on: ubuntu-latest
     env:
@@ -57,6 +68,9 @@ jobs:
 
       - name: Run postgres init script
         run: PGPASSWORD=password psql -h localhost -p 5432 -U postgres -d postgres -f ./postgres/init.sql
+
+      - name: Run mysql init script
+        run: mysql -h 127.0.0.1 -P 3306 -uroot -ppassword < ./mysql/init.sql
 
       - name: Test
         run: make test

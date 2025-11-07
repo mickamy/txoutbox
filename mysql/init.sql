@@ -1,0 +1,17 @@
+CREATE DATABASE IF NOT EXISTS txoutbox;
+
+USE txoutbox;
+
+CREATE TABLE IF NOT EXISTS txoutbox (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    topic VARCHAR(255) NOT NULL,
+    `key` VARCHAR(255) NULL,
+    payload JSON NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    retry_count INT NOT NULL DEFAULT 0,
+    next_retry_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    claimed_by VARCHAR(255),
+    claimed_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP NULL
+);

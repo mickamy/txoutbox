@@ -9,8 +9,8 @@ asynchronously with a relay that handles retries, leasing, and backoff.
   Kafka/SQS/Webhook/etc.).
 - **Relay with leasing**: avoids duplicate deliveries via `Claim` + `LeaseTTL`, retries with configurable backoff and
   attempt limits.
-- **DB-specific packages**: root module exposes the interfaces, while `store/postgres` (and future `store/mysql`,
-  `store/sqlite`, …) bring their own SQL.
+- **DB-specific packages**: root module exposes the interfaces, while `store/postgres` / `store/mysql` (and future
+  backends) bring their own SQL.
 - **Observability-ready hooks**: leveled `Logger` interface, context propagation, and overridable clock (`Options.Now`)
   for deterministic tests.
 - **Docker playground**: `compose.yaml` runs PostgreSQL + LocalStack SQS so you can try the flow locally.
@@ -54,10 +54,14 @@ asynchronously with a relay that handles retries, leasing, and backoff.
      go run ./cmd/consumer                # optional: drain SQS messages and log them
    ```
     - `POSTGRES_DSN` (default `postgres://postgres:password@localhost:5432/txoutbox?sslmode=disable`) controls database
-      access.
+      access.  
     - `SENDER` chooses the dispatcher (`webhook` default, `sqs` for LocalStack). Use `WEBHOOK_URL` or `SQS_ENDPOINT`/
       `QUEUE_URL` to point at your infra.
-    - `cmd/enqueue` creates an `orders` table (if needed), writes a fake order, and calls `store/postgres.Add` inside a
-      transaction.
-    - `cmd/relay` runs the shared relay with either the HTTP sender or the SQS sender so you can observe leasing/retries
-      interacting with downstream processes (`cmd/webhook` or LocalStack SQS).
+   - `cmd/enqueue` creates an `orders` table (if needed), writes a fake order, and calls `store/postgres.Add` inside a
+     transaction.
+   - `cmd/relay` runs the shared relay with either the HTTP sender or the SQS sender so you can observe leasing/retries
+     interacting with downstream processes (`cmd/webhook` or LocalStack SQS).
+
+## License
+
+[MIT](./LICENSE)

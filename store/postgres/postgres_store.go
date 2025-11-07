@@ -54,7 +54,7 @@ func (s *Store) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Me
 	}
 	query := fmt.Sprintf(
 		"INSERT INTO %s (topic, key, payload) VALUES ($1, $2, $3)",
-		sqlutil.QuoteIdentifier(s.table),
+		sqlutil.QuoteIdentifier(s.table, `"`),
 	)
 	var key any
 	if msg.Key != "" {
@@ -87,7 +87,7 @@ SET status = 'sending',
 FROM candidates
 WHERE o.id = candidates.id
 RETURNING o.id, o.topic, o.key, o.payload, o.retry_count, o.created_at;
-`, sqlutil.QuoteIdentifier(s.table), sqlutil.QuoteIdentifier(s.table))
+`, sqlutil.QuoteIdentifier(s.table, `"`), sqlutil.QuoteIdentifier(s.table, `"`))
 
 	rows, err := s.db.QueryContext(ctx, query, now, limit, workerID, leaseUntil)
 	if err != nil {
@@ -128,7 +128,7 @@ RETURNING o.id, o.topic, o.key, o.payload, o.retry_count, o.created_at;
 func (s *Store) Send(ctx context.Context, id int64, sendAt time.Time) error {
 	query := fmt.Sprintf(
 		"UPDATE %s SET status = 'sent', sent_at = $2, claimed_by = NULL, claimed_at = NULL WHERE id = $1",
-		sqlutil.QuoteIdentifier(s.table),
+		sqlutil.QuoteIdentifier(s.table, `"`),
 	)
 	_, err := s.db.ExecContext(ctx, query, id, sendAt)
 	return err
@@ -144,7 +144,7 @@ SET status = 'retry',
     claimed_by = NULL,
     claimed_at = NULL
 WHERE id = $1`,
-		sqlutil.QuoteIdentifier(s.table),
+		sqlutil.QuoteIdentifier(s.table, `"`),
 	)
 	_, err := s.db.ExecContext(ctx, query, id, retryCount, nextRetry)
 	return err
@@ -159,7 +159,7 @@ SET status = 'failed',
     claimed_by = NULL,
     claimed_at = NULL
 WHERE id = $1`,
-		sqlutil.QuoteIdentifier(s.table),
+		sqlutil.QuoteIdentifier(s.table, `"`),
 	)
 	_, err := s.db.ExecContext(ctx, query, id, retryCount)
 	return err

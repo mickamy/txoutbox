@@ -1,29 +1,22 @@
 package sqlutil
 
-import "database/sql"
+import (
+	"database/sql"
+	"strings"
+)
 
-// QuoteIdentifier returns a double-quoted identifier suitable for PostgreSQL.
-func QuoteIdentifier(name string) string {
-	return `"` + EscapeIdentifier(name) + `"`
+func QuoteIdentifier(name, quote string) string {
+	return quote + escapeIdentifier(name, quote) + quote
 }
 
-// EscapeIdentifier doubles internal quotes for safe quoting.
-func EscapeIdentifier(name string) string {
+func escapeIdentifier(name, quote string) string {
 	if name == "" {
 		return ""
 	}
-	res := make([]rune, 0, len(name))
-	for _, r := range name {
-		if r == '"' {
-			res = append(res, '"', '"')
-			continue
-		}
-		res = append(res, r)
-	}
-	return string(res)
+	escapedQuote := quote + quote
+	return strings.ReplaceAll(name, quote, escapedQuote)
 }
 
-// NullableString converts sql.NullString into *string.
 func NullableString(ns sql.NullString) *string {
 	if ns.Valid {
 		val := ns.String

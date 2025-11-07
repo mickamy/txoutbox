@@ -21,6 +21,25 @@ services:
     networks:
       default:
 
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: txoutbox
+      TZ: Asia/Tokyo
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      default:
+
   localstack:
     image: localstack/localstack:4.10.0
     ports:
@@ -46,3 +65,4 @@ networks:
 
 volumes:
   postgres:
+  mysql:
