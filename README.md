@@ -49,6 +49,9 @@ asynchronously with a relay that handles retries, leasing, and backoff.
    SENDER=sqs \
      QUEUE_URL=http://localhost:4566/000000000000/worker-queue \
      go run ./cmd/relay                   # alternative: send to LocalStack SQS
+   SENDER=sqs \
+     QUEUE_URL=http://localhost:4566/000000000000/worker-queue \
+     go run ./cmd/consumer                # optional: drain SQS messages and log them
    ```
     - `POSTGRES_DSN` (default `postgres://postgres:password@localhost:5432/txoutbox?sslmode=disable`) controls database
       access.

@@ -3,14 +3,12 @@ package sqs
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 
 	"github.com/mickamy/txoutbox"
+	awstest "github.com/mickamy/txoutbox/test/aws"
 )
 
 // Sender pushes envelopes to an SQS queue (works with LocalStack).
@@ -21,19 +19,10 @@ type Sender struct {
 
 // NewSender creates an SQS client targeting the given endpoint and queue.
 func NewSender(ctx context.Context, endpointURL, queueURL string) (*Sender, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion("us-east-1"),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
-	)
+	client, err := awstest.NewSQSClient(ctx, endpointURL)
 	if err != nil {
-		return nil, fmt.Errorf("load aws config: %w", err)
+		return nil, err
 	}
-	client := sqs.NewFromConfig(cfg, func(o *sqs.Options) {
-		if endpointURL != "" {
-			o.BaseEndpoint = aws.String(endpointURL)
-		}
-	})
-
 	return &Sender{
 		queueURL: queueURL,
 		client:   client,
