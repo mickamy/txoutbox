@@ -30,7 +30,7 @@ func TestRelayProcessOnceSuccess(t *testing.T) {
 
 	waitFor(t, store.sendCh)
 	cancel()
-	if err := <-errc; err != context.Canceled {
+	if err := <-errc; !errors.Is(err, context.Canceled) {
 		t.Fatalf("Relay.Run() error = %v, want %v", err, context.Canceled)
 	}
 
@@ -71,7 +71,7 @@ func TestRelayRetriesOnFailure(t *testing.T) {
 
 	waitFor(t, store.retryCh)
 	cancel()
-	if err := <-errc; err != context.Canceled {
+	if err := <-errc; !errors.Is(err, context.Canceled) {
 		t.Fatalf("Relay.Run() error = %v, want %v", err, context.Canceled)
 	}
 
@@ -106,7 +106,7 @@ func TestRelayFailsAfterMaxAttempts(t *testing.T) {
 
 	waitFor(t, store.failCh)
 	cancel()
-	if err := <-errc; err != context.Canceled {
+	if err := <-errc; !errors.Is(err, context.Canceled) {
 		t.Fatalf("Relay.Run() error = %v, want %v", err, context.Canceled)
 	}
 
