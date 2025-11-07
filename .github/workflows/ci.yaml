@@ -42,7 +42,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify all files are formatted
+      - name: Format
         run: |
           make fmt
 
