@@ -7,29 +7,12 @@ import (
 
 	"github.com/mickamy/txoutbox"
 	mysqlstore "github.com/mickamy/txoutbox/store/mysql"
-	testdb "github.com/mickamy/txoutbox/test/database"
+	"github.com/mickamy/txoutbox/test/database"
 )
 
 func TestStoreLifecycle(t *testing.T) {
 	ctx := context.Background()
-	db := testdb.OpenMySQL(t)
-
-	if _, err := db.ExecContext(ctx, `
-CREATE TABLE IF NOT EXISTS txoutbox (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  topic VARCHAR(255) NOT NULL,
-  `+"`key`"+` VARCHAR(255),
-  payload JSON NOT NULL,
-  status VARCHAR(32) NOT NULL DEFAULT 'pending',
-  retry_count INT NOT NULL DEFAULT 0,
-  next_retry_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  claimed_by VARCHAR(255),
-  claimed_at TIMESTAMP NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  sent_at TIMESTAMP NULL
-);`); err != nil {
-		t.Fatalf("create table: %v", err)
-	}
+	db := database.OpenMySQL(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
 	store := mysqlstore.NewStore(db)

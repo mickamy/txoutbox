@@ -13,23 +13,6 @@ import (
 func TestStoreLifecycle(t *testing.T) {
 	ctx := context.Background()
 	db := database.Open(t)
-
-	if _, err := db.ExecContext(ctx, `
-CREATE TABLE IF NOT EXISTS txoutbox (
-  id BIGSERIAL PRIMARY KEY,
-  topic TEXT NOT NULL,
-  key TEXT,
-  payload JSONB NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  retry_count INT NOT NULL DEFAULT 0,
-  next_retry_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  claimed_by TEXT,
-  claimed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  sent_at TIMESTAMPTZ
-);`); err != nil {
-		t.Fatalf("create table: %v", err)
-	}
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
 	store := postgres.NewStore(db)

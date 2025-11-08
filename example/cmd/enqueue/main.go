@@ -33,10 +33,6 @@ func main() {
 	}
 	defer func() { _ = db.Close() }()
 
-	if err := ensureOrdersTable(ctx, db); err != nil {
-		log.Fatalf("create orders table: %v", err)
-	}
-
 	o := order{
 		ID:        newID(),
 		Total:     99.99,
@@ -67,17 +63,6 @@ func insertOrder(ctx context.Context, db *sql.DB, o order) error {
 	_, err := db.ExecContext(ctx,
 		`INSERT INTO orders (id, total, currency, created_at) VALUES ($1,$2,$3,$4)`,
 		o.ID, o.Total, o.Currency, o.CreatedAt)
-	return err
-}
-
-func ensureOrdersTable(ctx context.Context, db *sql.DB) error {
-	_, err := db.ExecContext(ctx, `
-CREATE TABLE IF NOT EXISTS orders (
-    id TEXT PRIMARY KEY,
-    total NUMERIC(10,2) NOT NULL,
-    currency TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL
-)`)
 	return err
 }
 
