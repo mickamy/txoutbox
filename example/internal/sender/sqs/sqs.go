@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 
 	"github.com/mickamy/txoutbox"
-	awstest "github.com/mickamy/txoutbox/test/aws"
+	internalSQS "github.com/mickamy/txoutbox/internal/lib/aws/sqs"
 )
 
 // Sender pushes envelopes to an SQS queue (works with LocalStack).
@@ -19,7 +19,7 @@ type Sender struct {
 
 // NewSender creates an SQS client targeting the given endpoint and queue.
 func NewSender(ctx context.Context, endpointURL, queueURL string) (*Sender, error) {
-	client, err := awstest.NewSQSClient(ctx, endpointURL)
+	client, err := internalSQS.New(ctx, endpointURL)
 	if err != nil {
 		return nil, err
 	}

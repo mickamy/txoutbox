@@ -1,4 +1,4 @@
-package aws
+package sqs
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 )
 
-// NewSQSClient creates an SQS client with optional custom endpoint (LocalStack).
-func NewSQSClient(ctx context.Context, endpoint string) (*sqs.Client, error) {
+// New creates an SQS client with optional custom endpoint (LocalStack).
+func New(ctx context.Context, endpoint string) (*sqs.Client, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("us-east-1"),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),

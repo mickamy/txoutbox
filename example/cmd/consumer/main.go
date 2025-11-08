@@ -9,14 +9,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 
 	"github.com/mickamy/txoutbox/example/internal/config"
-	awstest "github.com/mickamy/txoutbox/test/aws"
+	internalSQS "github.com/mickamy/txoutbox/internal/lib/aws/sqs"
 )
 
 func main() {
 	cfg := config.Load()
 	ctx := context.Background()
 
-	client, err := awstest.NewSQSClient(ctx, cfg.SQSEndpoint)
+	client, err := internalSQS.New(ctx, cfg.SQSEndpoint)
 	if err != nil {
 		log.Fatalf("init sqs client: %v", err)
 	}
