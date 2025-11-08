@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 
 	"github.com/mickamy/txoutbox"
-	internalSQS "github.com/mickamy/txoutbox/internal/lib/aws/sqs"
+	internalSQS "github.com/mickamy/txoutbox/example/internal/lib/aws/sqs"
 )
 
 // Sender pushes envelopes to an SQS queue (works with LocalStack).
