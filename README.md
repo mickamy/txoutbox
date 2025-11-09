@@ -9,7 +9,7 @@ asynchronously with a relay that handles retries, leasing, and backoff.
   Kafka/SQS/Webhook/etc.).
 - **Relay with leasing**: avoids duplicate deliveries via `Claim` + `LeaseTTL`, retries with configurable backoff and
   attempt limits.
-- **DB-specific packages**: root module exposes the interfaces, while `stores/postgres_store` / `stores/mysql_store` (and future
+- **DB-specific packages**: root module exposes the interfaces, while `stores/postgres_store` / `stores/mysql_store` / `stores/sqlite_store` (and future
   backends) bring their own SQL.
 - **Observability-ready hooks**: leveled `Logger` interface, context propagation, and overridable clock (`Options.Now`)
   for deterministic tests, plus pluggable `Hooks` so you can emit metrics/traces for claims, retries, and failures.
