@@ -15,7 +15,7 @@ import (
 
 func TestPostgresStoreLifecycle(t *testing.T) {
 	ctx := context.Background()
-	db := database.Open(t)
+	db := database.OpenPostgres(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
 	store := stores.NewPostgresStore(db)
@@ -64,7 +64,7 @@ func TestPostgresStoreLifecycle(t *testing.T) {
 
 func TestPostgresStoreClaimAllowsExpiredLeases(t *testing.T) {
 	ctx := context.Background()
-	db := database.Open(t)
+	db := database.OpenPostgres(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
 	store := stores.NewPostgresStore(db)
@@ -99,7 +99,7 @@ func TestPostgresStoreClaimAllowsExpiredLeases(t *testing.T) {
 
 func TestPostgresStoreClaimConcurrentWorkers(t *testing.T) {
 	ctx := context.Background()
-	db := database.Open(t)
+	db := database.OpenPostgres(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
 	const (

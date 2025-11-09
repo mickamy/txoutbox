@@ -10,13 +10,13 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-const defaultDSN = "postgres://postgres:password@localhost:5432/txoutbox?sslmode=disable"
+const defaultPostgresDSN = "postgres://postgres:password@localhost:5432/txoutbox?sslmode=disable"
 
-func Open(t *testing.T) *sql.DB {
+func OpenPostgres(t *testing.T) *sql.DB {
 	t.Helper()
 	dsn := os.Getenv("POSTGRES_DSN")
 	if dsn == "" {
-		dsn = defaultDSN
+		dsn = defaultPostgresDSN
 	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
