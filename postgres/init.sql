@@ -16,3 +16,11 @@ CREATE TABLE txoutbox
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     sent_at       TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS orders
+(
+    id         TEXT PRIMARY KEY,
+    total      NUMERIC(10, 2) NOT NULL,
+    currency   TEXT           NOT NULL,
+    created_at TIMESTAMPTZ    NOT NULL
+)
