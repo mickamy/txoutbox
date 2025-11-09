@@ -1,4 +1,4 @@
-package postgres
+package stores
 
 import (
 	"bytes"
@@ -11,32 +11,32 @@ import (
 	"github.com/mickamy/txoutbox/internal/sqlutil"
 )
 
-type Store struct {
+type PostgresStore struct {
 	db    *sql.DB
 	table string
 	now   func() time.Time
 }
 
-type Option func(*Store)
+type PostgresOption func(*PostgresStore)
 
-func WithTable(table string) Option {
-	return func(s *Store) {
+func WithPostgresTable(table string) PostgresOption {
+	return func(s *PostgresStore) {
 		if table != "" {
 			s.table = table
 		}
 	}
 }
 
-func WithNow(now func() time.Time) Option {
-	return func(s *Store) {
+func WithPostgresNow(now func() time.Time) PostgresOption {
+	return func(s *PostgresStore) {
 		if now != nil {
 			s.now = now
 		}
 	}
 }
 
-func NewStore(db *sql.DB, opts ...Option) *Store {
-	store := &Store{
+func NewPostgresStore(db *sql.DB, opts ...PostgresOption) *PostgresStore {
+	store := &PostgresStore{
 		db:    db,
 		table: "txoutbox",
 		now:   time.Now,
@@ -47,7 +47,7 @@ func NewStore(db *sql.DB, opts ...Option) *Store {
 	return store
 }
 
-func (s *Store) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Message) error {
+func (s *PostgresStore) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Message) error {
 	payload, err := msg.MarshalPayload()
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (s *Store) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Me
 	return err
 }
 
-func (s *Store) Claim(ctx context.Context, workerID string, limit int, leaseTTL time.Duration) ([]txoutbox.Envelope, error) {
+func (s *PostgresStore) Claim(ctx context.Context, workerID string, limit int, leaseTTL time.Duration) ([]txoutbox.Envelope, error) {
 	if limit <= 0 {
 		return nil, fmt.Errorf("txoutbox: batch size must be positive")
 	}
@@ -125,7 +125,7 @@ RETURNING o.id, o.topic, o.key, o.payload, o.retry_count, o.created_at;
 	return envelopes, nil
 }
 
-func (s *Store) Send(ctx context.Context, id int64, sendAt time.Time) error {
+func (s *PostgresStore) Send(ctx context.Context, id int64, sendAt time.Time) error {
 	query := fmt.Sprintf(
 		"UPDATE %s SET status = 'sent', sent_at = $2, claimed_by = NULL, claimed_at = NULL WHERE id = $1",
 		sqlutil.QuoteIdentifier(s.table, `"`),
@@ -134,7 +134,7 @@ func (s *Store) Send(ctx context.Context, id int64, sendAt time.Time) error {
 	return err
 }
 
-func (s *Store) Retry(ctx context.Context, id int64, retryCount int, nextRetry time.Time) error {
+func (s *PostgresStore) Retry(ctx context.Context, id int64, retryCount int, nextRetry time.Time) error {
 	query := fmt.Sprintf(
 		`
 UPDATE %s
@@ -150,7 +150,7 @@ WHERE id = $1`,
 	return err
 }
 
-func (s *Store) Fail(ctx context.Context, id int64, retryCount int) error {
+func (s *PostgresStore) Fail(ctx context.Context, id int64, retryCount int) error {
 	query := fmt.Sprintf(
 		`
 UPDATE %s

@@ -9,7 +9,7 @@ asynchronously with a relay that handles retries, leasing, and backoff.
   Kafka/SQS/Webhook/etc.).
 - **Relay with leasing**: avoids duplicate deliveries via `Claim` + `LeaseTTL`, retries with configurable backoff and
   attempt limits.
-- **DB-specific packages**: root module exposes the interfaces, while `store/postgres` / `store/mysql` (and future
+- **DB-specific packages**: root module exposes the interfaces, while `stores/postgres_store` / `stores/mysql_store` (and future
   backends) bring their own SQL.
 - **Observability-ready hooks**: leveled `Logger` interface, context propagation, and overridable clock (`Options.Now`)
   for deterministic tests, plus pluggable `Hooks` so you can emit metrics/traces for claims, retries, and failures.
@@ -59,7 +59,7 @@ asynchronously with a relay that handles retries, leasing, and backoff.
       `QUEUE_URL` to point at your infra.
     - `example/cmd/relay` also exposes expvar metrics at `http://localhost:2112/debug/vars` so you can inspect the new
       `Hooks` counters.
-   - `cmd/enqueue` creates an `orders` table (if needed), writes a fake order, and calls `store/postgres.Add` inside a
+   - `cmd/enqueue` creates an `orders` table (if needed), writes a fake order, and calls `stores.NewPostgresStore(...).Add` inside a
      transaction.
    - `cmd/relay` runs the shared relay with either the HTTP sender or the SQS sender so you can observe leasing/retries
      interacting with downstream processes (`cmd/webhook` or LocalStack SQS).

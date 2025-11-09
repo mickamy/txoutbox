@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/mickamy/txoutbox"
-	"github.com/mickamy/txoutbox/store/postgres"
+	"github.com/mickamy/txoutbox/stores"
 
 	"github.com/mickamy/txoutbox/example/internal/config"
 	"github.com/mickamy/txoutbox/example/internal/database"
@@ -44,7 +44,7 @@ func main() {
 		log.Fatalf("insert order: %v", err)
 	}
 
-	store := postgres.NewStore(db)
+	store := stores.NewPostgresStore(db)
 	if err := enqueue(ctx, store, db, o); err != nil {
 		log.Fatalf("enqueue outbox: %v", err)
 	}

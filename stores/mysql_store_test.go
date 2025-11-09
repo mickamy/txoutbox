@@ -1,4 +1,4 @@
-package postgres_test
+package stores_test
 
 import (
 	"context"
@@ -9,16 +9,16 @@ import (
 	"time"
 
 	"github.com/mickamy/txoutbox"
-	"github.com/mickamy/txoutbox/store/postgres"
+	"github.com/mickamy/txoutbox/stores"
 	"github.com/mickamy/txoutbox/test/database"
 )
 
-func TestStoreLifecycle(t *testing.T) {
+func TestMySQLStoreLifecycle(t *testing.T) {
 	ctx := context.Background()
-	db := database.Open(t)
+	db := database.OpenMySQL(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
-	store := postgres.NewStore(db)
+	store := stores.NewMySQLStore(db)
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -54,7 +54,7 @@ func TestStoreLifecycle(t *testing.T) {
 	}
 
 	var status string
-	if err := db.QueryRowContext(ctx, "SELECT status FROM txoutbox WHERE id=$1", envs[0].ID).Scan(&status); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT status FROM txoutbox WHERE id=?", envs[0].ID).Scan(&status); err != nil {
 		t.Fatalf("select status: %v", err)
 	}
 	if status != "failed" {
@@ -62,13 +62,79 @@ func TestStoreLifecycle(t *testing.T) {
 	}
 }
 
-func TestStoreClaimAllowsExpiredLeases(t *testing.T) {
+func TestMySQLStoreClaimEmpty(t *testing.T) {
 	ctx := context.Background()
-	db := database.Open(t)
+	db := database.OpenMySQL(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
-	store := postgres.NewStore(db)
-	seedPostgresMessages(t, ctx, db, 1)
+	store := stores.NewMySQLStore(db)
+	envs, err := store.Claim(ctx, "worker-empty", 5, time.Minute)
+	if err != nil {
+		t.Fatalf("Claim returned error: %v", err)
+	}
+	if len(envs) != 0 {
+		t.Fatalf("expected 0 envelopes, got %d", len(envs))
+	}
+}
+
+func TestMySQLStoreClaimAfterRetry(t *testing.T) {
+	ctx := context.Background()
+	db := database.OpenMySQL(t)
+	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
+
+	store := stores.NewMySQLStore(db)
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin tx: %v", err)
+	}
+	if err := store.Add(ctx, tx, txoutbox.Message{
+		Topic: "order.created",
+		Key:   "order-2",
+		Body: map[string]any{
+			"id":    2,
+			"total": 42,
+		},
+	}); err != nil {
+		t.Fatalf("Add error: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	// first claim to lock the message
+	envs, err := store.Claim(ctx, "worker-lease", 1, time.Millisecond)
+	if err != nil {
+		t.Fatalf("Claim error: %v", err)
+	}
+	if len(envs) != 1 {
+		t.Fatalf("expected 1 envelope, got %d", len(envs))
+	}
+
+	// simulate retry by setting next_retry_at to the past
+	if err := store.Retry(ctx, envs[0].ID, envs[0].RetryCount+1, time.Now().Add(-time.Minute)); err != nil {
+		t.Fatalf("Retry error: %v", err)
+	}
+
+	envs2, err := store.Claim(ctx, "worker-lease", 1, time.Minute)
+	if err != nil {
+		t.Fatalf("Claim error: %v", err)
+	}
+	if len(envs2) != 1 {
+		t.Fatalf("expected 1 envelope after retry, got %d", len(envs2))
+	}
+	if envs2[0].ID != envs[0].ID {
+		t.Fatalf("expected to reclaim id=%d, got %d", envs[0].ID, envs2[0].ID)
+	}
+}
+
+func TestMySQLStoreClaimAllowsExpiredLeases(t *testing.T) {
+	ctx := context.Background()
+	db := database.OpenMySQL(t)
+	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
+
+	store := stores.NewMySQLStore(db)
+	seedMySQLMessages(t, ctx, db, 1)
 
 	firstClaim, err := store.Claim(ctx, "worker-initial", 1, time.Minute)
 	if err != nil {
@@ -79,7 +145,7 @@ func TestStoreClaimAllowsExpiredLeases(t *testing.T) {
 	}
 
 	if _, err := db.ExecContext(ctx,
-		`UPDATE txoutbox SET next_retry_at = NOW() - INTERVAL '1 second' WHERE id = $1`,
+		`UPDATE txoutbox SET next_retry_at = NOW(6) - INTERVAL 1 SECOND WHERE id = ?`,
 		firstClaim[0].ID,
 	); err != nil {
 		t.Fatalf("set next_retry_at: %v", err)
@@ -97,9 +163,9 @@ func TestStoreClaimAllowsExpiredLeases(t *testing.T) {
 	}
 }
 
-func TestStoreClaimConcurrentWorkers(t *testing.T) {
+func TestMySQLStoreClaimConcurrentWorkers(t *testing.T) {
 	ctx := context.Background()
-	db := database.Open(t)
+	db := database.OpenMySQL(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
 	const (
@@ -108,8 +174,8 @@ func TestStoreClaimConcurrentWorkers(t *testing.T) {
 		batchSize     = 2
 	)
 
-	store := postgres.NewStore(db)
-	seedPostgresMessages(t, ctx, db, totalMessages)
+	store := stores.NewMySQLStore(db)
+	seedMySQLMessages(t, ctx, db, totalMessages)
 
 	start := make(chan struct{})
 	var (
@@ -147,12 +213,12 @@ func TestStoreClaimConcurrentWorkers(t *testing.T) {
 	}
 }
 
-func seedPostgresMessages(t *testing.T, ctx context.Context, db *sql.DB, count int) {
+func seedMySQLMessages(t *testing.T, ctx context.Context, db *sql.DB, count int) {
 	t.Helper()
 	for i := 0; i < count; i++ {
 		payload := fmt.Sprintf(`{"id":%d}`, i)
 		if _, err := db.ExecContext(ctx,
-			`INSERT INTO txoutbox (topic, payload) VALUES ($1, $2::jsonb)`,
+			`INSERT INTO txoutbox (topic, payload) VALUES (?, ?)`,
 			"order.created", payload,
 		); err != nil {
 			t.Fatalf("insert message %d: %v", i, err)

@@ -1,4 +1,4 @@
-package mysql
+package stores
 
 import (
 	"context"
@@ -11,32 +11,32 @@ import (
 	"github.com/mickamy/txoutbox/internal/sqlutil"
 )
 
-type Store struct {
+type MySQLStore struct {
 	db    *sql.DB
 	table string
 	now   func() time.Time
 }
 
-type Option func(*Store)
+type MySQLOption func(*MySQLStore)
 
-func WithTable(table string) Option {
-	return func(s *Store) {
+func WithMySQLTable(table string) MySQLOption {
+	return func(s *MySQLStore) {
 		if table != "" {
 			s.table = table
 		}
 	}
 }
 
-func WithNow(now func() time.Time) Option {
-	return func(s *Store) {
+func WithMySQLNow(now func() time.Time) MySQLOption {
+	return func(s *MySQLStore) {
 		if now != nil {
 			s.now = now
 		}
 	}
 }
 
-func NewStore(db *sql.DB, opts ...Option) *Store {
-	store := &Store{
+func NewMySQLStore(db *sql.DB, opts ...MySQLOption) *MySQLStore {
+	store := &MySQLStore{
 		db:    db,
 		table: "txoutbox",
 		now:   time.Now,
@@ -47,7 +47,7 @@ func NewStore(db *sql.DB, opts ...Option) *Store {
 	return store
 }
 
-func (s *Store) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Message) error {
+func (s *MySQLStore) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Message) error {
 	payload, err := msg.MarshalPayload()
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (s *Store) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Me
 	return err
 }
 
-func (s *Store) Claim(ctx context.Context, workerID string, limit int, leaseTTL time.Duration) ([]txoutbox.Envelope, error) {
+func (s *MySQLStore) Claim(ctx context.Context, workerID string, limit int, leaseTTL time.Duration) ([]txoutbox.Envelope, error) {
 	if limit <= 0 {
 		return nil, fmt.Errorf("txoutbox: batch size must be positive")
 	}
@@ -98,7 +98,7 @@ func (s *Store) Claim(ctx context.Context, workerID string, limit int, leaseTTL 
 	return envelopes, nil
 }
 
-func (s *Store) selectCandidateIDs(ctx context.Context, tx *sql.Tx, limit int) ([]int64, error) {
+func (s *MySQLStore) selectCandidateIDs(ctx context.Context, tx *sql.Tx, limit int) ([]int64, error) {
 	query := fmt.Sprintf(`
 SELECT id FROM %s
 WHERE status IN ('pending','retry','sending')
@@ -123,7 +123,7 @@ FOR UPDATE SKIP LOCKED`, s.tableIdent(), limit)
 	return ids, rows.Err()
 }
 
-func (s *Store) markSending(ctx context.Context, tx *sql.Tx, ids []int64, workerID string, claimedAt, leaseUntil time.Time) error {
+func (s *MySQLStore) markSending(ctx context.Context, tx *sql.Tx, ids []int64, workerID string, claimedAt, leaseUntil time.Time) error {
 	query := fmt.Sprintf(`
 UPDATE %s
 SET status = 'sending',
@@ -139,7 +139,7 @@ WHERE id IN (%s)`, s.tableIdent(), placeholders(len(ids)))
 	return err
 }
 
-func (s *Store) fetchEnvelopes(ctx context.Context, tx *sql.Tx, ids []int64) ([]txoutbox.Envelope, error) {
+func (s *MySQLStore) fetchEnvelopes(ctx context.Context, tx *sql.Tx, ids []int64) ([]txoutbox.Envelope, error) {
 	query := fmt.Sprintf(`
 SELECT id, topic, `+"`key`"+`, payload, retry_count, created_at
 FROM %s
@@ -186,13 +186,13 @@ WHERE id IN (%s)`, s.tableIdent(), placeholders(len(ids)))
 	return envelopes, rows.Err()
 }
 
-func (s *Store) Send(ctx context.Context, id int64, sendAt time.Time) error {
+func (s *MySQLStore) Send(ctx context.Context, id int64, sendAt time.Time) error {
 	query := fmt.Sprintf("UPDATE %s SET status='sent', sent_at=?, claimed_by=NULL, claimed_at=NULL WHERE id=?", s.tableIdent())
 	_, err := s.db.ExecContext(ctx, query, sendAt, id)
 	return err
 }
 
-func (s *Store) Retry(ctx context.Context, id int64, retryCount int, nextRetry time.Time) error {
+func (s *MySQLStore) Retry(ctx context.Context, id int64, retryCount int, nextRetry time.Time) error {
 	query := fmt.Sprintf(`
 UPDATE %s
 SET status='retry',
@@ -205,7 +205,7 @@ WHERE id=?`, s.tableIdent())
 	return err
 }
 
-func (s *Store) Fail(ctx context.Context, id int64, retryCount int) error {
+func (s *MySQLStore) Fail(ctx context.Context, id int64, retryCount int) error {
 	query := fmt.Sprintf(`
 UPDATE %s
 SET status='failed',
@@ -217,7 +217,7 @@ WHERE id=?`, s.tableIdent())
 	return err
 }
 
-func (s *Store) tableIdent() string {
+func (s *MySQLStore) tableIdent() string {
 	return sqlutil.QuoteIdentifier(s.table, "`")
 }
 

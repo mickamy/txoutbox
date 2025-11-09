@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/mickamy/txoutbox"
-	"github.com/mickamy/txoutbox/store/postgres"
+	"github.com/mickamy/txoutbox/example/internal/database"
+	"github.com/mickamy/txoutbox/stores"
 
 	"github.com/mickamy/txoutbox/example/internal/config"
-	"github.com/mickamy/txoutbox/example/internal/database"
 	examplemetrics "github.com/mickamy/txoutbox/example/internal/metrics"
 	"github.com/mickamy/txoutbox/example/internal/sender/sqs"
 	"github.com/mickamy/txoutbox/example/internal/sender/webhook"
@@ -29,7 +29,7 @@ func main() {
 	}
 	defer func() { _ = db.Close() }()
 
-	store := postgres.NewStore(db)
+	store := stores.NewPostgresStore(db)
 	hooks := examplemetrics.NewStatsHook("txoutbox_relay")
 	startMetricsServer()
 
