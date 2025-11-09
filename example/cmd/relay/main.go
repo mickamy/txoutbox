@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"expvar"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/mickamy/txoutbox"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/mickamy/txoutbox/example/internal/config"
 	"github.com/mickamy/txoutbox/example/internal/database"
+	examplemetrics "github.com/mickamy/txoutbox/example/internal/metrics"
 	"github.com/mickamy/txoutbox/example/internal/sender/sqs"
 	"github.com/mickamy/txoutbox/example/internal/sender/webhook"
 )
@@ -27,6 +30,8 @@ func main() {
 	defer func() { _ = db.Close() }()
 
 	store := postgres.NewStore(db)
+	hooks := examplemetrics.NewStatsHook("txoutbox_relay")
+	startMetricsServer()
 
 	sender, err := newSender(ctx, cfg)
 	if err != nil {
@@ -38,6 +43,7 @@ func main() {
 		LeaseTTL:    30 * time.Second,
 		MaxAttempts: 5,
 		Logger:      logAdapter{},
+		Hooks:       hooks,
 	})
 
 	log.Printf("relay started (sender=%s)", cfg.Sender)
@@ -69,4 +75,16 @@ func newSender(ctx context.Context, cfg config.Config) (txoutbox.Sender, error) 
 	default:
 		return nil, fmt.Errorf("unknown sender %q", cfg.Sender)
 	}
+}
+
+func startMetricsServer() {
+	const addr = ":2112"
+	mux := http.NewServeMux()
+	mux.Handle("/debug/vars", expvar.Handler())
+	go func() {
+		log.Printf("metrics available at http://localhost%s/debug/vars", addr)
+		if err := http.ListenAndServe(addr, mux); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("metrics server stopped: %v", err)
+		}
+	}()
 }

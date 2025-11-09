@@ -17,6 +17,24 @@ type Logger interface {
 	Error(ctx context.Context, format string, v ...any)
 }
 
+// Hooks lets callers observe relay activity for metrics/tracing/logs.
+type Hooks interface {
+	// OnClaim fires after each Claim with the requested batch vs actual rows.
+	OnClaim(ctx context.Context, batchSize int, claimed int)
+	// OnSendSuccess fires for every Envelope delivered successfully.
+	OnSendSuccess(ctx context.Context, env Envelope)
+	// OnSendFailure fires when Sender returns an error before retry/fail handling.
+	OnSendFailure(ctx context.Context, env Envelope, err error)
+	// OnRetry fires when a message is rescheduled for another attempt.
+	OnRetry(ctx context.Context, env Envelope, nextAttempt int, delay time.Duration)
+	// OnFail fires when a message is permanently failed.
+	OnFail(ctx context.Context, env Envelope, attempts int, err error)
+	// OnStoreError fires when a Store call returns an error.
+	OnStoreError(ctx context.Context, op string, id int64, err error)
+	// OnCycle fires once per processOnce iteration with the elapsed duration.
+	OnCycle(ctx context.Context, duration time.Duration)
+}
+
 // Backoff returns the wait duration before the given attempt.
 type Backoff func(attempt int) time.Duration
 
@@ -58,6 +76,8 @@ type Options struct {
 	Backoff Backoff
 	// Logger emits structured logs for relay activity.
 	Logger Logger
+	// Hooks let callers plug metrics/tracing/etc. into relay events.
+	Hooks Hooks
 	// WorkerID identifies this relay instance in the database.
 	WorkerID string
 	// Now supplies the current time; override for tests or custom time sources.
@@ -82,6 +102,9 @@ func (o *Options) setDefaults() {
 	}
 	if o.Logger == nil {
 		o.Logger = noopLogger{}
+	}
+	if o.Hooks == nil {
+		o.Hooks = noopHooks{}
 	}
 	if o.WorkerID == "" {
 		o.WorkerID = randomWorkerID()
@@ -131,24 +154,32 @@ func (r *Relay) Run(ctx context.Context) error {
 
 // processOnce claims at most BatchSize messages and attempts delivery.
 func (r *Relay) processOnce(ctx context.Context) error {
+	start := time.Now()
 	envelopes, err := r.store.Claim(ctx, r.opts.WorkerID, r.opts.BatchSize, r.opts.LeaseTTL)
 	if err != nil {
 		return err
 	}
+	r.opts.Hooks.OnClaim(ctx, r.opts.BatchSize, len(envelopes))
 	if len(envelopes) == 0 {
+		r.opts.Hooks.OnCycle(ctx, time.Since(start))
 		return nil
 	}
 
 	now := r.opts.Now().UTC()
 	for _, env := range envelopes {
 		if err := r.sender.Send(ctx, env); err != nil {
+			r.opts.Hooks.OnSendFailure(ctx, env, err)
 			r.handleFailure(ctx, env, err)
 			continue
 		}
 		if err := r.store.Send(ctx, env.ID, now); err != nil {
 			r.opts.Logger.Error(ctx, "mark sent failed id=%d: %v", env.ID, err)
+			r.opts.Hooks.OnStoreError(ctx, "send", env.ID, err)
+			continue
 		}
+		r.opts.Hooks.OnSendSuccess(ctx, env)
 	}
+	r.opts.Hooks.OnCycle(ctx, time.Since(start))
 	return nil
 }
 
@@ -158,8 +189,10 @@ func (r *Relay) handleFailure(ctx context.Context, env Envelope, sendErr error) 
 	if attempt >= r.opts.MaxAttempts {
 		if err := r.store.Fail(ctx, env.ID, attempt); err != nil {
 			r.opts.Logger.Error(ctx, "mark failed id=%d: %v (original err: %v)", env.ID, err, sendErr)
+			r.opts.Hooks.OnStoreError(ctx, "fail", env.ID, err)
 		} else {
 			r.opts.Logger.Warn(ctx, "message %d failed permanently after %d attempts: %v", env.ID, attempt, sendErr)
+			r.opts.Hooks.OnFail(ctx, env, attempt, sendErr)
 		}
 		return
 	}
@@ -167,19 +200,27 @@ func (r *Relay) handleFailure(ctx context.Context, env Envelope, sendErr error) 
 	nextRetry := r.opts.Now().UTC().Add(delay)
 	if err := r.store.Retry(ctx, env.ID, attempt, nextRetry); err != nil {
 		r.opts.Logger.Error(ctx, "mark retry failed id=%d: %v (original err: %v)", env.ID, err, sendErr)
+		r.opts.Hooks.OnStoreError(ctx, "retry", env.ID, err)
 		return
 	}
+	r.opts.Hooks.OnRetry(ctx, env, attempt, delay)
 	r.opts.Logger.Warn(ctx, "message %d scheduled for retry #%d in %s: %v", env.ID, attempt, delay, sendErr)
 }
 
 // noopLogger discards all relay logs.
 type noopLogger struct{}
 
-// Info implements Logger.
-func (noopLogger) Info(context.Context, string, ...any) {}
-
-// Warn implements Logger.
-func (noopLogger) Warn(context.Context, string, ...any) {}
-
-// Error implements Logger.
+func (noopLogger) Info(context.Context, string, ...any)  {}
+func (noopLogger) Warn(context.Context, string, ...any)  {}
 func (noopLogger) Error(context.Context, string, ...any) {}
+
+// noopHooks discards all Relay hook invocations.
+type noopHooks struct{}
+
+func (noopHooks) OnClaim(context.Context, int, int)                     {}
+func (noopHooks) OnSendSuccess(context.Context, Envelope)               {}
+func (noopHooks) OnSendFailure(context.Context, Envelope, error)        {}
+func (noopHooks) OnRetry(context.Context, Envelope, int, time.Duration) {}
+func (noopHooks) OnFail(context.Context, Envelope, int, error)          {}
+func (noopHooks) OnStoreError(context.Context, string, int64, error)    {}
+func (noopHooks) OnCycle(context.Context, time.Duration)                {}

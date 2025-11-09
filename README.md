@@ -12,7 +12,7 @@ asynchronously with a relay that handles retries, leasing, and backoff.
 - **DB-specific packages**: root module exposes the interfaces, while `store/postgres` / `store/mysql` (and future
   backends) bring their own SQL.
 - **Observability-ready hooks**: leveled `Logger` interface, context propagation, and overridable clock (`Options.Now`)
-  for deterministic tests.
+  for deterministic tests, plus pluggable `Hooks` so you can emit metrics/traces for claims, retries, and failures.
 - **Docker playground**: `compose.yaml` runs PostgreSQL + LocalStack SQS so you can try the flow locally.
 
 ## Quick Start
@@ -57,6 +57,8 @@ asynchronously with a relay that handles retries, leasing, and backoff.
       access.  
     - `SENDER` chooses the dispatcher (`webhook` default, `sqs` for LocalStack). Use `WEBHOOK_URL` or `SQS_ENDPOINT`/
       `QUEUE_URL` to point at your infra.
+    - `example/cmd/relay` also exposes expvar metrics at `http://localhost:2112/debug/vars` so you can inspect the new
+      `Hooks` counters.
    - `cmd/enqueue` creates an `orders` table (if needed), writes a fake order, and calls `store/postgres.Add` inside a
      transaction.
    - `cmd/relay` runs the shared relay with either the HTTP sender or the SQS sender so you can observe leasing/retries
