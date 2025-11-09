@@ -93,9 +93,7 @@ RETURNING o.id, o.topic, o.key, o.payload, o.retry_count, o.created_at;
 	if err != nil {
 		return nil, err
 	}
-	defer func(rows *sql.Rows) {
-		_ = rows.Close()
-	}(rows)
+	defer func(rows *sql.Rows) { _ = rows.Close() }(rows)
 
 	var envelopes []txoutbox.Envelope
 	for rows.Next() {

@@ -110,7 +110,9 @@ FOR UPDATE SKIP LOCKED`, s.tableIdent(), limit)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	var ids []int64
 	for rows.Next() {
@@ -154,7 +156,7 @@ WHERE id IN (%s)`, s.tableIdent(), placeholders(len(ids)))
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) { _ = rows.Close() }(rows)
 
 	var envelopes []txoutbox.Envelope
 	for rows.Next() {

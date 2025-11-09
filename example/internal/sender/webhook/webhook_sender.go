@@ -40,9 +40,7 @@ func (s *Sender) Send(ctx context.Context, msg txoutbox.Envelope) error {
 	if err != nil {
 		return err
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
+	defer func(Body io.ReadCloser) { _ = Body.Close() }(resp.Body)
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("webhook responded with %s", resp.Status)
 	}
