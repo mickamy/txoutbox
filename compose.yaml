@@ -15,7 +15,7 @@ services:
       start_period: 30s
     volumes:
       - postgres:/var/lib/postgresql/data
-      - ./postgres:/docker-entrypoint-initdb.d
+      - ./docker/postgres:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     networks:
@@ -31,7 +31,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql:/var/lib/mysql
-      - ./mysql:/docker-entrypoint-initdb.d
+      - ./docker/mysql:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -ppassword"]
       interval: 5s
@@ -48,8 +48,8 @@ services:
     environment:
       - SERVICES=sqs
     volumes:
-      - ./localstack/volume:/var/lib/localstack
-      - ./localstack/init.sh:/etc/localstack/init/ready.d/init.sh
+      - ./docker/localstack/volume:/var/lib/localstack
+      - ./docker/localstack/init.sh:/etc/localstack/init/ready.d/init.sh
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:4566/_localstack/health" ]
