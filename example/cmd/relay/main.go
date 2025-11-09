@@ -14,7 +14,7 @@ import (
 	"github.com/mickamy/txoutbox/stores"
 
 	"github.com/mickamy/txoutbox/example/internal/config"
-	examplemetrics "github.com/mickamy/txoutbox/example/internal/metrics"
+	"github.com/mickamy/txoutbox/example/internal/metrics"
 	"github.com/mickamy/txoutbox/example/internal/sender/sqs"
 	"github.com/mickamy/txoutbox/example/internal/sender/webhook"
 )
@@ -30,7 +30,7 @@ func main() {
 	defer func() { _ = db.Close() }()
 
 	store := stores.NewPostgresStore(db)
-	hooks := examplemetrics.NewStatsHook("txoutbox_relay")
+	hooks := metrics.NewStatsHook("txoutbox_relay")
 	startMetricsServer()
 
 	sender, err := newSender(ctx, cfg)
