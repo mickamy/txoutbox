@@ -1,4 +1,4 @@
-package webhook
+package senders
 
 import (
 	"bytes"
@@ -12,20 +12,20 @@ import (
 	"github.com/mickamy/txoutbox"
 )
 
-// Sender posts envelopes to an HTTP endpoint.
-type Sender struct {
+// WebhookSender posts envelopes to an HTTP endpoint.
+type WebhookSender struct {
 	client *http.Client
 	target string
 }
 
-func NewSender(target string) *Sender {
-	return &Sender{
+func NewWebhook(target string) *WebhookSender {
+	return &WebhookSender{
 		target: target,
 		client: &http.Client{Timeout: 5 * time.Second},
 	}
 }
 
-func (s *Sender) Send(ctx context.Context, msg txoutbox.Envelope) error {
+func (s *WebhookSender) Send(ctx context.Context, msg txoutbox.Envelope) error {
 	body, err := json.Marshal(msg)
 	if err != nil {
 		return err

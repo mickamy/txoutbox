@@ -1,4 +1,4 @@
-package sqs
+package senders
 
 import (
 	"context"
@@ -11,26 +11,26 @@ import (
 	internalSQS "github.com/mickamy/txoutbox/example/internal/lib/aws/sqs"
 )
 
-// Sender pushes envelopes to an SQS queue (works with LocalStack).
-type Sender struct {
+// SQSSender pushes envelopes to an SQS queue (works with LocalStack).
+type SQSSender struct {
 	queueURL string
 	client   *sqs.Client
 }
 
-// NewSender creates an SQS client targeting the given endpoint and queue.
-func NewSender(ctx context.Context, endpointURL, queueURL string) (*Sender, error) {
+// NewSQS creates an SQS client targeting the given endpoint and queue.
+func NewSQS(ctx context.Context, endpointURL, queueURL string) (*SQSSender, error) {
 	client, err := internalSQS.New(ctx, endpointURL)
 	if err != nil {
 		return nil, err
 	}
-	return &Sender{
+	return &SQSSender{
 		queueURL: queueURL,
 		client:   client,
 	}, nil
 }
 
 // Send implements txoutbox.Sender by posting the raw JSON payload to SQS.
-func (s *Sender) Send(ctx context.Context, msg txoutbox.Envelope) error {
+func (s *SQSSender) Send(ctx context.Context, msg txoutbox.Envelope) error {
 	body, err := json.Marshal(struct {
 		Topic   string          `json:"topic"`
 		Key     *string         `json:"key,omitempty"`

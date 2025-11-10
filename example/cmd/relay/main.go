@@ -15,8 +15,7 @@ import (
 
 	"github.com/mickamy/txoutbox/example/internal/config"
 	"github.com/mickamy/txoutbox/example/internal/metrics"
-	"github.com/mickamy/txoutbox/example/internal/sender/sqs"
-	"github.com/mickamy/txoutbox/example/internal/sender/webhook"
+	"github.com/mickamy/txoutbox/example/internal/senders"
 )
 
 func main() {
@@ -69,9 +68,9 @@ func (logAdapter) Error(_ context.Context, format string, args ...any) {
 func newSender(ctx context.Context, cfg config.Config) (txoutbox.Sender, error) {
 	switch cfg.Sender {
 	case "sqs":
-		return sqs.NewSender(ctx, cfg.SQSEndpoint, cfg.QueueURL)
-	case "webhook", "":
-		return webhook.NewSender(cfg.WebhookURL), nil
+		return senders.NewSQS(ctx, cfg.SQSEndpoint, cfg.QueueURL)
+	case "webhook":
+		return senders.NewWebhook(cfg.WebhookURL), nil
 	default:
 		return nil, fmt.Errorf("unknown sender %q", cfg.Sender)
 	}
