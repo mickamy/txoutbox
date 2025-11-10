@@ -67,10 +67,10 @@ jobs:
         run: make lint
 
       - name: Run postgres init script
-        run: PGPASSWORD=password psql -h localhost -p 5432 -U postgres -d postgres -f ./postgres/init.sql
+        run: PGPASSWORD=password psql -h localhost -p 5432 -U postgres -d postgres -f ./docker/postgres/init.sql
 
       - name: Run mysql init script
-        run: mysql -h 127.0.0.1 -P 3306 -uroot -ppassword < ./mysql/init.sql
+        run: mysql -h 127.0.0.1 -P 3306 -uroot -ppassword < ./docker/mysql/init.sql
 
       - name: Test
         run: make test
