@@ -28,7 +28,7 @@ func main() {
 	}
 	defer func() { _ = db.Close() }()
 
-	store := stores.NewPostgresStore(db)
+	store := stores.NewPostgres(db)
 	hooks := metrics.NewStatsHook("txoutbox_relay")
 	startMetricsServer()
 

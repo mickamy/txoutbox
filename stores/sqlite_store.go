@@ -10,19 +10,19 @@ import (
 	"github.com/mickamy/txoutbox/internal/sqlutil"
 )
 
-// SQLiteStore implements Store for SQLite databases.
-type SQLiteStore struct {
+// SQLite implements Store for SQLite databases.
+type SQLite struct {
 	db    *sql.DB
 	table string
 	now   func() time.Time
 }
 
-// SQLiteOption configures a SQLiteStore.
-type SQLiteOption func(*SQLiteStore)
+// SQLiteOption configures a SQLite.
+type SQLiteOption func(*SQLite)
 
 // WithSQLiteTable overrides the default table name ("txoutbox").
 func WithSQLiteTable(name string) SQLiteOption {
-	return func(s *SQLiteStore) {
+	return func(s *SQLite) {
 		if name != "" {
 			s.table = name
 		}
@@ -31,16 +31,16 @@ func WithSQLiteTable(name string) SQLiteOption {
 
 // WithSQLiteNow overrides the clock used for Lease timestamps.
 func WithSQLiteNow(now func() time.Time) SQLiteOption {
-	return func(s *SQLiteStore) {
+	return func(s *SQLite) {
 		if now != nil {
 			s.now = now
 		}
 	}
 }
 
-// NewSQLiteStore creates a Store backed by SQLite.
-func NewSQLiteStore(db *sql.DB, opts ...SQLiteOption) *SQLiteStore {
-	store := &SQLiteStore{
+// NewSQLite creates a Store backed by SQLite.
+func NewSQLite(db *sql.DB, opts ...SQLiteOption) *SQLite {
+	store := &SQLite{
 		db:    db,
 		table: "txoutbox",
 		now:   time.Now,
@@ -52,7 +52,7 @@ func NewSQLiteStore(db *sql.DB, opts ...SQLiteOption) *SQLiteStore {
 }
 
 // Add inserts a new message row within the caller's transaction.
-func (s *SQLiteStore) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Message) error {
+func (s *SQLite) Add(ctx context.Context, exec txoutbox.Executor, msg txoutbox.Message) error {
 	payload, err := msg.MarshalPayload()
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (s *SQLiteStore) Add(ctx context.Context, exec txoutbox.Executor, msg txout
 }
 
 // Claim leases up to limit rows for the given worker.
-func (s *SQLiteStore) Claim(ctx context.Context, workerID string, limit int, leaseTTL time.Duration) ([]txoutbox.Envelope, error) {
+func (s *SQLite) Claim(ctx context.Context, workerID string, limit int, leaseTTL time.Duration) ([]txoutbox.Envelope, error) {
 	if limit <= 0 {
 		return nil, fmt.Errorf("txoutbox: batch size must be positive")
 	}
@@ -124,14 +124,14 @@ RETURNING id, topic, key, payload, retry_count, created_at;`, s.tableIdent(), s.
 }
 
 // Send marks the row successful.
-func (s *SQLiteStore) Send(ctx context.Context, id int64, sendAt time.Time) error {
+func (s *SQLite) Send(ctx context.Context, id int64, sendAt time.Time) error {
 	query := fmt.Sprintf("UPDATE %s SET status='sent', sent_at=?, claimed_by=NULL, claimed_at=NULL WHERE id=?", s.tableIdent())
 	_, err := s.db.ExecContext(ctx, query, sendAt, id)
 	return err
 }
 
 // Retry schedules the row for another attempt.
-func (s *SQLiteStore) Retry(ctx context.Context, id int64, retryCount int, nextRetry time.Time) error {
+func (s *SQLite) Retry(ctx context.Context, id int64, retryCount int, nextRetry time.Time) error {
 	query := fmt.Sprintf(`
 UPDATE %s
 SET status='retry',
@@ -145,7 +145,7 @@ WHERE id=?`, s.tableIdent())
 }
 
 // Fail marks the row permanently failed.
-func (s *SQLiteStore) Fail(ctx context.Context, id int64, retryCount int) error {
+func (s *SQLite) Fail(ctx context.Context, id int64, retryCount int) error {
 	query := fmt.Sprintf(`
 UPDATE %s
 SET status='failed',
@@ -157,6 +157,6 @@ WHERE id=?`, s.tableIdent())
 	return err
 }
 
-func (s *SQLiteStore) tableIdent() string {
+func (s *SQLite) tableIdent() string {
 	return sqlutil.QuoteIdentifier(s.table, `"`)
 }

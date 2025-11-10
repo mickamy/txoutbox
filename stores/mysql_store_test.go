@@ -18,7 +18,7 @@ func TestMySQLStoreLifecycle(t *testing.T) {
 	db := database.OpenMySQL(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
-	store := stores.NewMySQLStore(db)
+	store := stores.NewMySQL(db)
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -67,7 +67,7 @@ func TestMySQLStoreClaimEmpty(t *testing.T) {
 	db := database.OpenMySQL(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
-	store := stores.NewMySQLStore(db)
+	store := stores.NewMySQL(db)
 	envs, err := store.Claim(ctx, "worker-empty", 5, time.Minute)
 	if err != nil {
 		t.Fatalf("Claim returned error: %v", err)
@@ -82,7 +82,7 @@ func TestMySQLStoreClaimAfterRetry(t *testing.T) {
 	db := database.OpenMySQL(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
-	store := stores.NewMySQLStore(db)
+	store := stores.NewMySQL(db)
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -133,7 +133,7 @@ func TestMySQLStoreClaimAllowsExpiredLeases(t *testing.T) {
 	db := database.OpenMySQL(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
-	store := stores.NewMySQLStore(db)
+	store := stores.NewMySQL(db)
 	seedMySQLMessages(t, ctx, db, 1)
 
 	firstClaim, err := store.Claim(ctx, "worker-initial", 1, time.Minute)
@@ -174,7 +174,7 @@ func TestMySQLStoreClaimConcurrentWorkers(t *testing.T) {
 		batchSize     = 2
 	)
 
-	store := stores.NewMySQLStore(db)
+	store := stores.NewMySQL(db)
 	seedMySQLMessages(t, ctx, db, totalMessages)
 
 	start := make(chan struct{})

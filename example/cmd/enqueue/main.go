@@ -44,7 +44,7 @@ func main() {
 		log.Fatalf("insert order: %v", err)
 	}
 
-	store := stores.NewPostgresStore(db)
+	store := stores.NewPostgres(db)
 	if err := enqueue(ctx, store, db, o); err != nil {
 		log.Fatalf("enqueue outbox: %v", err)
 	}

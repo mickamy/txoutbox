@@ -15,7 +15,7 @@ func TestSQLiteStoreLifecycle(t *testing.T) {
 	db := database.OpenSQLite(t)
 	ctx := context.Background()
 
-	store := stores.NewSQLiteStore(db)
+	store := stores.NewSQLite(db)
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -58,7 +58,7 @@ func TestSQLiteStoreClaimEmpty(t *testing.T) {
 	db := database.OpenSQLite(t)
 	ctx := context.Background()
 
-	store := stores.NewSQLiteStore(db)
+	store := stores.NewSQLite(db)
 	envs, err := store.Claim(ctx, "worker", 10, time.Minute)
 	if err != nil {
 		t.Fatalf("Claim error: %v", err)

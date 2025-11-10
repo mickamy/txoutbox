@@ -18,7 +18,7 @@ func TestPostgresStoreLifecycle(t *testing.T) {
 	db := database.OpenPostgres(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
-	store := stores.NewPostgresStore(db)
+	store := stores.NewPostgres(db)
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -67,7 +67,7 @@ func TestPostgresStoreClaimAllowsExpiredLeases(t *testing.T) {
 	db := database.OpenPostgres(t)
 	_, _ = db.ExecContext(ctx, `TRUNCATE txoutbox`)
 
-	store := stores.NewPostgresStore(db)
+	store := stores.NewPostgres(db)
 	seedPostgresMessages(t, ctx, db, 1)
 
 	firstClaim, err := store.Claim(ctx, "worker-initial", 1, time.Minute)
@@ -108,7 +108,7 @@ func TestPostgresStoreClaimConcurrentWorkers(t *testing.T) {
 		batchSize     = 2
 	)
 
-	store := stores.NewPostgresStore(db)
+	store := stores.NewPostgres(db)
 	seedPostgresMessages(t, ctx, db, totalMessages)
 
 	start := make(chan struct{})
